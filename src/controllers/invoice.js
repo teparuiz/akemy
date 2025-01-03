@@ -1,4 +1,7 @@
-const Invoice = require("../models/invoice");
+
+const {sequelize} = require('../models/')
+const Invoice = require('../models/init-models')(sequelize).invoice
+
 
 exports.getInvoice = async (req, res) => {
     try {
@@ -10,6 +13,8 @@ exports.getInvoice = async (req, res) => {
 
       return res.status(200).json({ message: "Invoice fetched", data: invoices });
     } catch (error) {
+
+      console.log(error)
       return res.status(500).json({ message: "Internal server error" });
     }
   };

@@ -2,11 +2,14 @@ const express = require("express");
 const app = express();
 const { sequelize } = require("./src/models");
 const invoiceRoutes = require("./src/routes/invoice");
+const logger = require("morgan");
 
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use(logger("dev"));
 
 app.get("/", (req, res) => {
   res.send("<h2>Hey si me ven!!</h2>");
