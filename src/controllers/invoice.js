@@ -15,7 +15,7 @@ exports.getInvoice = async (req, res) => {
 
     return res.status(200).json({ message: "Facturas", data: invoices });
   } catch (error) {
-    console.log(error)
+    console.log(error);
     return res
       .status(500)
       .json({ message: "Error interno del servidor", error: error });
@@ -85,9 +85,7 @@ exports.createInvoice = async (req, res) => {
 
   try {
     const findUnique = await Invoice.findOne({
-      where: {
-        uuid: uuid,
-      },
+      where: { uuid },
     });
 
     if (findUnique)
@@ -106,51 +104,59 @@ exports.createInvoice = async (req, res) => {
         uuid,
         currency,
       },
-      {
-        transaction: t,
-      }
+      { transaction: t }
     );
 
     if (items) {
-      const invoiceRow = items.map((item) => {
-        return {
-          ...item,
-          invoice_row_invoice_id: invoice.invoice_id,
-        };
-      });
+      const invoiceRow = items.map((item) => ({
+        ...item,
+        invoice_row_invoice_id: invoice.invoice_id,
+      }));
 
-      await models.invoice_row.bulkCreate(invoiceRow, {
-        transaction: t,
-      });
+      await models.invoice_row.bulkCreate(invoiceRow, { transaction: t });
     }
 
     if (customer) {
-      const customerInvoice = {
-        legal_name: customer.legal_name,
-        tax_id: customer.tax_id,
-        customer_invoice_id: invoice.invoice_id,
-      };
+      let customerId;
 
-      const customerRes = await models.customer.create(customerInvoice, {
-        transaction: t,
-      });
+      if (customer.customer_id) {
+        const existingCustomer = await models.customer.findByPk(
+          customer.customer_id
+        );
+        if (!existingCustomer) {
+          return res.status(404).json({ message: "Cliente no encontrado" });
+        }
+        customerId = existingCustomer.customer_id;
+      } else {
+        const newCustomer = await models.customer.create(
+          {
+            legal_name: customer.legal_name,
+            tax_id: customer.tax_id,
+            customer_invoice_id: invoice.invoice_id,
+          },
+          { transaction: t }
+        );
+        customerId = newCustomer.customer_id;
 
-      if (customerRes) {
-        const address = {
-          customer_address_id: customerRes.customer_id,
-          street: customer.address ? customer.address.street : null,
-          city: customer.address ? customer.address.city : null,
-          state: customer.address ? customer.address.state : null,
-          country: customer.address ? customer.address.country : null,
-          zip: customer.address ? customer.address.zip : null,
-          exterior: customer.address ? customer.address.exterior : null,
-          interior: customer.address ? customer.address.interior : null,
-        };
-
-        await models.addresses.create(address, {
-          transaction: t,
-        });
+        if (customer.address) {
+          const address = {
+            customer_address_id: customerId,
+            street: customer.address.street || null,
+            city: customer.address.city || null,
+            state: customer.address.state || null,
+            country: customer.address.country || null,
+            zip: customer.address.zip || null,
+            exterior: customer.address.exterior || null,
+            interior: customer.address.interior || null,
+          };
+          await models.addresses.create(address, { transaction: t });
+        }
       }
+
+      await invoice.update(
+        { customer_invoice_id: customerId },
+        { transaction: t }
+      );
     }
 
     await t.commit();
@@ -163,9 +169,7 @@ exports.createInvoice = async (req, res) => {
         {
           model: models.invoice_row,
           as: "invoice_row",
-          attributes: {
-            exclude: ["invoice_row_invoice_id"],
-          },
+          attributes: { exclude: ["invoice_row_invoice_id"] },
         },
         {
           model: models.customer,
@@ -176,9 +180,7 @@ exports.createInvoice = async (req, res) => {
           include: {
             model: models.addresses,
             as: "addresses",
-            attributes: {
-              exclude: ["customer_address_id"],
-            },
+            attributes: { exclude: ["customer_address_id"] },
           },
         },
       ],
@@ -188,11 +190,11 @@ exports.createInvoice = async (req, res) => {
       .status(201)
       .json({ message: "Factura creada!", data: invoiceDescription });
   } catch (error) {
-    console.log(error)
+    console.error(error);
     await t.rollback();
     return res
       .status(500)
-      .json({ message: "Error interno del servidor", error: error });
+      .json({ message: "Error interno del servidor", error });
   }
 };
 
@@ -333,7 +335,7 @@ exports.updateInvoice = async (req, res) => {
       .status(200)
       .json({ message: "Factura actualizada", data: findInvoice });
   } catch (error) {
-    console.log(error)
+    console.log(error);
     await t.rollback();
     return res
       .status(500)
@@ -368,15 +370,6 @@ exports.deleteInvoice = async (req, res) => {
       transaction: t,
     });
 
-    await models.customer.destroy({
-      where: { customer_invoice_id: invoice.invoice_id },
-      transaction: t,
-    });
-
-    await models.addresses.destroy({
-      where: { customer_address_id: invoice.customer.customer_address_id },
-      transaction: t,
-    });
 
     await invoice.destroy({ transaction: t });
 
@@ -386,8 +379,7 @@ exports.deleteInvoice = async (req, res) => {
       .status(200)
       .json({ message: "Factura eliminada", invoice_id: invoice.invoice_id });
   } catch (error) {
-
-    console.log(error)
+    console.log(error);
     await t.rollback();
     return res
       .status(500)
