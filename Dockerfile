@@ -12,6 +12,10 @@ RUN npm ci --omit=dev
 
 COPY . .
 
+COPY database.sqlite /tmp/database.sqlite
+
+RUN chown node:node /tmp/database.sqlite
+
 USER node
 
 EXPOSE 3000
