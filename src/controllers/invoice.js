@@ -11,8 +11,9 @@ exports.getInvoice = async (req, res) => {
 
     return res.status(200).json({ message: "Facturas", data: invoices });
   } catch (error) {
-    console.log(error);
-    return res.status(500).json({ message: "Error interno del servidor" });
+    return res
+      .status(500)
+      .json({ message: "Error interno del servidor", error: error });
   }
 };
 
@@ -53,7 +54,9 @@ exports.getInvoiceById = async (req, res) => {
     return res.status(200).json({ message: "Factura obtenida", data: invoice });
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: "Error interno del servidor" });
+    return res
+      .status(500)
+      .json({ message: "Error interno del servidor", error: error });
   }
 };
 
@@ -76,6 +79,15 @@ exports.createInvoice = async (req, res) => {
   const t = await sequelize.transaction();
 
   try {
+    const findUnique = await Invoice.findOne({
+      where: {
+        uuid: uuid,
+      },
+    });
+
+    if (findUnique)
+      return res.status(409).json({ message: "La factura ya existe" });
+
     const invoice = await Invoice.create(
       {
         status,
@@ -147,16 +159,31 @@ exports.createInvoice = async (req, res) => {
             exclude: ["invoice_row_invoice_id"],
           },
         },
+        {
+          model: models.customer,
+          as: "customer",
+          attributes: {
+            exclude: ["customer_invoice_id", "customer_address_id"],
+          },
+          include: {
+            model: models.addresses,
+            as: "addresses",
+            attributes: {
+              exclude: ["customer_address_id"],
+            },
+          },
+        },
       ],
     });
 
     return res
       .status(201)
-      .json({ message: "Invoice created", data: invoiceDescription });
+      .json({ message: "Factura creada!", data: invoiceDescription });
   } catch (error) {
-    console.log(error);
     await t.rollback();
-    return res.status(500).json({ message: "Error interno del servidor" });
+    return res
+      .status(500)
+      .json({ message: "Error interno del servidor", error: error });
   }
 };
 
@@ -256,6 +283,20 @@ exports.updateInvoice = async (req, res) => {
             exclude: ["invoice_row_invoice_id"],
           },
         },
+        {
+          model: models.customer,
+          as: "customer",
+          attributes: {
+            exclude: ["customer_invoice_id", "customer_address_id"],
+          },
+          include: {
+            model: models.addresses,
+            as: "addresses",
+            attributes: {
+              exclude: ["customer_address_id"],
+            },
+          },
+        },
       ],
     });
 
@@ -265,10 +306,11 @@ exports.updateInvoice = async (req, res) => {
       .status(200)
       .json({ message: "Factura actualizada", data: findInvoice });
   } catch (error) {
-
-    console.log(error)
+    console.log(error);
     await t.rollback();
-    return res.status(500).json({ message: "Error interno del servidor" });
+    return res
+      .status(500)
+      .json({ message: "Error interno del servidor", error: error });
   }
 };
 
@@ -288,9 +330,11 @@ exports.deleteInvoice = async (req, res) => {
 
     return res
       .status(200)
-      .json({ message: "Factura eliminada", data: invoice });
+      .json({ message: "Factura eliminada", invoice_id: invoice.invoice_id });
   } catch (error) {
     await t.rollback();
-    return res.status(500).json({ message: "Error interno del servidor" });
+    return res
+      .status(500)
+      .json({ message: "Error interno del servidor", error: error });
   }
 };

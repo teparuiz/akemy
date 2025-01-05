@@ -27,4 +27,4 @@ sequelize
       console.log(`Server running on port ${PORT}`);
     });
   })
-  .catch((err) => console.log(error));
+  .catch((err) => console.log(err));

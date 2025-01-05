@@ -15,6 +15,7 @@ router.post(
 router.put(
   "/invoice/update-invoice/:id",
   authenticateApiKey,
+  validate(invoiceSchema),
   controller.updateInvoice
 );
 router.delete(

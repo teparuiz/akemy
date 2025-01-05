@@ -12,13 +12,15 @@ const invoiceSchema = yup.object({
           "Debe tener 12 carácteres si es persona moral o 13 carácteres si es persona física."
         ),
       address: yup
-        .object({
+        .object()
+        .shape({
           zip: yup
             .string()
             .required("El código postal es obligatorio.")
-            .length(5, "Debe tener 5 carácteres."),
+            .length(5, "El código postal debe tener 5 carácteres."),
           state: yup.string().required("El estado es obligatorio."),
         })
+
         .required("La dirección es obligatoria."),
     })
     .required("El cliente es obligatorio."),
