@@ -4,7 +4,11 @@ const models = require("../models/init-models")(sequelize);
 
 exports.getInvoice = async (req, res) => {
   try {
-    const invoices = await Invoice.findAll();
+    const invoices = await Invoice.findAll({
+      attributes: {
+        exclude: ["customer_invoice_id", "invoice_row_invoice_id"],
+      },
+    });
 
     if (invoices.length === 0)
       return res.status(204).json({ message: "No hay facturas!" });
@@ -151,6 +155,9 @@ exports.createInvoice = async (req, res) => {
     await t.commit();
 
     const invoiceDescription = await Invoice.findByPk(invoice.invoice_id, {
+      attributes: {
+        exclude: ["customer_invoice_id", "invoice_row_invoice_id"],
+      },
       include: [
         {
           model: models.invoice_row,
@@ -214,74 +221,96 @@ exports.updateInvoice = async (req, res) => {
     if (!invoice)
       return res.status(204).json({ message: "No existe esta factura!" });
 
-    await invoice.update(
-      {
-        status,
-        date,
-        type,
-        description,
-        discount,
-        payment_form,
-        tax,
-        total,
-        uuid,
-        currency,
-      },
-      {
-        transaction: t,
-      }
-    );
+    const updatedFields = {};
+    if (status !== invoice.status) updatedFields.status = status;
+    if (date !== invoice.date) updatedFields.date = date;
+    if (type !== invoice.type) updatedFields.type = type;
+    if (description !== invoice.description)
+      updatedFields.description = description;
+    if (discount !== invoice.discount) updatedFields.discount = discount;
+    if (payment_form !== invoice.payment_form)
+      updatedFields.payment_form = payment_form;
+    if (tax !== invoice.tax) updatedFields.tax = tax;
+    if (total !== invoice.total) updatedFields.total = total;
+    if (uuid !== invoice.uuid) updatedFields.uuid = uuid;
+    if (currency !== invoice.currency) updatedFields.currency = currency;
+
+    if (Object.keys(updatedFields).length > 0) {
+      await invoice.update(updatedFields, { transaction: t });
+    }
 
     if (items) {
-      const invoiceRow = items.map((item) => {
-        return {
-          ...item,
-          invoice_row_invoice_id: invoice.invoice_id,
-        };
-      });
-
-      await models.invoice_row.bulkCreate(invoiceRow, {
+      await models.invoice_row.destroy({
+        where: { invoice_row_invoice_id: invoice.invoice_id },
         transaction: t,
       });
+
+      const invoiceRow = items.map((item) => ({
+        ...item,
+        invoice_row_invoice_id: invoice.invoice_id,
+      }));
+
+      await models.invoice_row.bulkCreate(invoiceRow, { transaction: t });
     }
 
     if (customer) {
-      const customerInvoice = {
-        legal_name: customer.legal_name,
-        tax_id: customer.tax_id,
-        customer_invoice_id: invoice.invoice_id,
-      };
-
-      const customerRes = await models.customer.create(customerInvoice, {
+      const existingCustomer = await models.customer.findOne({
+        where: { customer_invoice_id: invoice.invoice_id },
         transaction: t,
       });
 
-      if (customerRes) {
-        const address = {
-          customer_address_id: customerRes.customer_id,
-          street: customer.address ? customer.address.street : null,
-          city: customer.address ? customer.address.city : null,
-          state: customer.address ? customer.address.state : null,
-          country: customer.address ? customer.address.country : null,
-          zip: customer.address ? customer.address.zip : null,
-          exterior: customer.address ? customer.address.exterior : null,
-          interior: customer.address ? customer.address.interior : null,
+      if (existingCustomer) {
+        if (
+          customer.legal_name !== existingCustomer.legal_name ||
+          customer.tax_id !== existingCustomer.tax_id
+        ) {
+          await existingCustomer.update(
+            {
+              legal_name: customer.legal_name,
+              tax_id: customer.tax_id,
+            },
+            { transaction: t }
+          );
+        }
+      } else {
+        const customerInvoice = {
+          legal_name: customer.legal_name,
+          tax_id: customer.tax_id,
+          customer_invoice_id: invoice.invoice_id,
         };
 
-        await models.addresses.create(address, {
+        const customerRes = await models.customer.create(customerInvoice, {
           transaction: t,
         });
+
+        if (customerRes) {
+          const address = {
+            customer_address_id: customerRes.customer_id,
+            street: customer.address?.street,
+            city: customer.address?.city,
+            state: customer.address?.state,
+            country: customer.address?.country,
+            zip: customer.address?.zip,
+            exterior: customer.address?.exterior,
+            interior: customer.address?.interior,
+          };
+
+          await models.addresses.create(address, { transaction: t });
+        }
       }
     }
 
+    await t.commit();
+
     const findInvoice = await Invoice.findByPk(invoice.invoice_id, {
+      attributes: {
+        exclude: ["customer_invoice_id", "invoice_row_invoice_id"],
+      },
       include: [
         {
           model: models.invoice_row,
           as: "invoice_row",
-          attributes: {
-            exclude: ["invoice_row_invoice_id"],
-          },
+          attributes: { exclude: ["invoice_row_invoice_id"] },
         },
         {
           model: models.customer,
@@ -292,21 +321,16 @@ exports.updateInvoice = async (req, res) => {
           include: {
             model: models.addresses,
             as: "addresses",
-            attributes: {
-              exclude: ["customer_address_id"],
-            },
+            attributes: { exclude: ["customer_address_id"] },
           },
         },
       ],
     });
 
-    await t.commit();
-
     return res
       .status(200)
       .json({ message: "Factura actualizada", data: findInvoice });
   } catch (error) {
-    console.log(error);
     await t.rollback();
     return res
       .status(500)
@@ -320,11 +344,38 @@ exports.deleteInvoice = async (req, res) => {
   const t = await sequelize.transaction();
 
   try {
-    const invoice = await Invoice.findByPk(id);
+    const invoice = await Invoice.findByPk(id, {
+      include: [
+        {
+          model: models.invoice_row,
+          as: "invoice_row",
+        },
+        {
+          model: models.customer,
+          as: "customer",
+        },
+      ],
+      transaction: t,
+    });
 
     if (!invoice) return res.status(204).json({ message: "No hay datos" });
 
-    await invoice.destroy();
+    await models.invoice_row.destroy({
+      where: { invoice_row_invoice_id: invoice.invoice_id },
+      transaction: t,
+    });
+
+    await models.customer.destroy({
+      where: { customer_invoice_id: invoice.invoice_id },
+      transaction: t,
+    });
+
+    await models.addresses.destroy({
+      where: { customer_address_id: invoice.customer.customer_address_id },
+      transaction: t,
+    });
+
+    await invoice.destroy({ transaction: t });
 
     await t.commit();
 

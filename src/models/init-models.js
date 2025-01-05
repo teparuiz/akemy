@@ -23,12 +23,12 @@ function initModels(sequelize) {
     foreignKey: "invoice_row_invoice_id",
   });
 
-  invoice.belongsTo(customer, {
+  invoice.hasOne(customer, {
     as: "customer",
     foreignKey: "customer_invoice_id",
   });
 
-  customer.hasMany(invoice, {
+  customer.belongsTo(invoice, {
     as: "invoice",
     foreignKey: "customer_invoice_id",
   });
