@@ -15,6 +15,7 @@ exports.getInvoice = async (req, res) => {
 
     return res.status(200).json({ message: "Facturas", data: invoices });
   } catch (error) {
+    console.log(error)
     return res
       .status(500)
       .json({ message: "Error interno del servidor", error: error });
@@ -187,6 +188,7 @@ exports.createInvoice = async (req, res) => {
       .status(201)
       .json({ message: "Factura creada!", data: invoiceDescription });
   } catch (error) {
+    console.log(error)
     await t.rollback();
     return res
       .status(500)
@@ -331,6 +333,7 @@ exports.updateInvoice = async (req, res) => {
       .status(200)
       .json({ message: "Factura actualizada", data: findInvoice });
   } catch (error) {
+    console.log(error)
     await t.rollback();
     return res
       .status(500)
@@ -383,6 +386,8 @@ exports.deleteInvoice = async (req, res) => {
       .status(200)
       .json({ message: "Factura eliminada", invoice_id: invoice.invoice_id });
   } catch (error) {
+
+    console.log(error)
     await t.rollback();
     return res
       .status(500)
