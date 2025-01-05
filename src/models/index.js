@@ -1,11 +1,7 @@
 "use strict";
 
 const Sequelize = require("sequelize");
-const sequelize = new Sequelize({
-    dialect: "sqlite",
-    storage: "./database.db",
-    logging: false
-});
+const sequelize = new Sequelize("sqlite::memory:");
 
 const initModels = require("./init-models");
 const models = initModels(sequelize);
