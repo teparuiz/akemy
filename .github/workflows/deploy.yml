@@ -25,5 +25,10 @@ jobs:
         with:
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/my-app:latest
-            ${{ secrets.DOCKER_USERNAME }}/my-app:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/akemy:latest
+            ${{ secrets.DOCKER_USERNAME }}/akemy:${{ github.sha }}
+      - name: Copy Docker image to server
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "
+            docker pull ${{ secrets.DOCKER_USERNAME }}/akemy:latest && \
+            docker tag ${{ secrets.DOCKER_USERNAME }}/akemy:latest local-image:latest"
