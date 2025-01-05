@@ -12,6 +12,14 @@ module.exports = function (sequelize, DataTypes) {
       customer_invoice_id: {
         type: DataTypes.INTEGER,
         allowNull: true,
+        references: {
+          model: "invoice",
+          key: "invoice_id",
+        },
+      },
+      customer_address_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
       },
       created_at: {
         type: DataTypes.DATE,
@@ -26,18 +34,7 @@ module.exports = function (sequelize, DataTypes) {
         type: DataTypes.STRING,
         allowNull: true,
       },
-      address: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-      },
-      invoice_customer_id: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        references: {
-          model: "customer",
-          key: "customer_id",
-        },
-      },
+      
     },
     {
       sequelize,

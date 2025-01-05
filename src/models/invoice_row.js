@@ -61,7 +61,7 @@ module.exports = function (sequelize, DataTypes) {
         {
           name: "invoice_row_pkey",
           unique: true,
-          fields: [{ name: "invoice_row_invoice_id" }],
+          fields: [{ name: "invoice_row_id" }],
         },
       ],
     }

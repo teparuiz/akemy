@@ -9,9 +9,9 @@ module.exports = function (sequelize, DataTypes) {
         allowNull: false,
         primaryKey: true,
       },
-      customer_id: {
+      customer_invoice_id: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
         references: {
           model: "customer",
           key: "customer_id",
@@ -23,14 +23,6 @@ module.exports = function (sequelize, DataTypes) {
         references: {
           model: "invoice_row",
           key: "invoice_row_id",
-        },
-      },
-      status_invoice_id: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        references: {
-          model: "status_invoice",
-          key: "status_invoice_id",
         },
       },
       created_at: {
@@ -56,7 +48,7 @@ module.exports = function (sequelize, DataTypes) {
       },
       discount: {
         type: DataTypes.DECIMAL,
-        allowNull: false,
+        allowNull: true,
       },
       tax: {
         type: DataTypes.DECIMAL,
@@ -66,19 +58,17 @@ module.exports = function (sequelize, DataTypes) {
         type: DataTypes.DECIMAL,
         allowNull: false,
       },
-
-      
       payment_form: {
         type: DataTypes.INTEGER,
-        allowNull: true,
+        allowNull: false,
       },
       uuid: {
         type: DataTypes.UUID,
-        allowNull: true,
+        allowNull: false,
       },
       currency: {
         type: DataTypes.STRING(10),
-        allowNull: true,
+        allowNull: false,
       },
     },
     {
